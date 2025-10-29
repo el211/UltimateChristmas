@@ -1,0 +1,40 @@
+# Correct and Complete config.yml
+
+# --- Global Settings ---
+debug: false
+
+messages:
+  # The prefix for most plugin messages.
+  prefix: "&c&l[Christmas]&r "
+
+  # Message shown when a player earns shards from breaking a block or killing a mob
+  shards-earned: "&a+ %amount% shards &7(You now have %total%)"
+
+  # Message shown when a player doesn't have enough shards for a purchase
+  not-enough-shards: "&cNot enough shards!"
+
+  # Message shown when a player successfully buys an item
+  bought-item: "&aPurchase successful! New balance: %balance% shards"
+
+
+# --- Feature Toggles ---
+# Use these settings to quickly enable or disable major features.
+
+toggles:
+  # Enables the shard economy (earning shards from blocks/mobs, shard manager).
+  shard-economy: true
+  
+  # Enables the /shards shop command and the GUI itself.
+  shard-shop: true
+  
+  # Enables the daily gift item and the daily gift manager.
+  daily-gifts: true
+  
+  # Enables the Santa NPC spawning and interaction logic.
+  santa-event: true
+  
+  # Enables the /playchristmas command and the music manager.
+  music: true
+  
+  # Enables the ability to earn rewards by hitting villagers with snowballs.
+  villager-snowball: true

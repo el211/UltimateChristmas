@@ -1,0 +1,50 @@
+# Configuration for Shard earning sources (Blocks, Vanilla Mobs, ItemsAdder blocks, MythicMobs mobs)
+
+enable-itemsadder: false
+enable-mythicmobs: false
+
+blocks:
+  # Vanilla block types by Bukkit material name (case-insensitive)
+  iron_ore:
+    shards: 5
+    chance: 0.05
+
+  coal_ore:
+    shards: 2
+    chance: 0.10
+
+  oak_log:
+    shards: 1
+    chance: 1.0
+
+itemsadder-blocks:
+  # ItemsAdder custom block example (requires enable-itemsadder: true AND plugin installed)
+  # Key must match ItemsAdder namespace:id for the block
+  # example "christmas:present_block"
+  christmas:present_block:
+    shards: 15
+    chance: 0.25
+
+mobs:
+  zombie:
+    shards: 10
+    chance: 0.10
+
+  spider:
+    shards: 5
+    chance: 0.20
+
+  creeper:
+    shards: 20
+    chance: 0.05
+
+mythicmobs:
+  # MythicMobs internal names (NOT display name)
+  # Only active if enable-mythicmobs: true and MythicMobs is installed.
+  FrostGiant:
+    shards: 50
+    chance: 0.50
+
+  EvilElf:
+    shards: 25
+    chance: 0.30

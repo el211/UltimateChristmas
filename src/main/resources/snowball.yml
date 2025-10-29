@@ -1,0 +1,28 @@
+# Configuration for snowball hitting mechanics
+
+villager-shoot:
+  rewards:
+    default:
+      cooldown: 30 # Cooldown per player (seconds)
+
+      # Reward 1: Small shard prize
+      small_prize:
+        chance: 80
+        commands:
+          - "shards give %player% 5"
+        messages:
+          - "&aHit! The villager is stunned and drops 5 shards."
+        event:
+          firework: false
+          sound: "BLOCK_SNOW_PLACE"
+
+      # Reward 2: Large shard prize
+      large_prize:
+        chance: 20
+        commands:
+          - "shards give %player% 25"
+        messages:
+          - "&aCritical Hit! The villager drops 25 shards!"
+        event:
+          firework: true
+          sound: "ENTITY_ARROW_HIT_PLAYER"

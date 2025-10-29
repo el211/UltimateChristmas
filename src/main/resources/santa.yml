@@ -1,0 +1,84 @@
+# Configuration for the Santa Manager NPC
+
+enabled: true
+debug: false
+# Name/skin to use for the LibsDisguises player disguise.
+# This should ideally be a valid Mojang username with a skin.
+skin: "brcdev"
+
+spawn:
+  # WorldGuard region where Santa is allowed to hang out / walk.
+  # Create this region in the SAME WORLD as the spawn location below.
+  #   /rg define santa_zone
+  walking_region_id: "santa_zone"
+
+  # Time in seconds between automatic spawns (after he despawns).
+  cooldown: 10
+
+  # How long Santa should stay spawned (in seconds) before auto-despawning.
+  stay_time: 60
+
+  # Message sent to all players when Santa spawns.
+  # %location% will be replaced with "x,y,z".
+  spawn-message: "&aSanta has spawned at &f%location%&a! Hurry and find him!"
+
+  # Message sent to all players when Santa leaves.
+  leave-message: "&cSanta has finished giving gifts and left from &f%location%&c."
+
+  # Where Santa can appear.
+  # The code randomly picks ONE child key under regions.
+  regions:
+    santa_plaza:
+      world: "world"
+      location:
+        x: 68.453
+        y: 64
+        z: -57.745
+      displayname: "&c&lSanta Claus"
+
+gifts:
+  drop_item:
+    material: "PLAYER_HEAD"
+    amount: 2
+    head_texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTE3YjMwNDExZTUwYWUxNWJiZTg0Yzk0NGY1MWRmNWUxYjRmNTZiM2RiMDg5MjgwYjZkMTVkNDAzNjU5MDYxIn19fQ=="
+    display_name: "&c&lSanta's Present"
+    lore:
+      - "&7Right-click to open!"
+      - "&fContains a random reward"
+      - "&fstraight from &cSanta &f🎁"
+
+
+
+  # The weighted rewards that Santa gives directly
+  # when a player right-clicks him.
+  rewards:
+
+    cookie_gift:
+      # Higher = more common
+      chance: 10
+      commands:
+        - "give %player% cookie 5"
+      messages:
+        - "&eSanta gave you a freshly baked cookie!"
+      event:
+        firework: false
+        sound: "ENTITY_PLAYER_BURP"
+    diamond_gift:
+      # Higher = more common
+      chance: 20
+      commands:
+        - "give %player% diamond 5"
+      messages:
+        - "&eSanta gave you a freshly baked cookie!"
+      event:
+        firework: false
+        sound: "ENTITY_PLAYER_BURP"
+    rare_shard_gift:
+      chance: 70
+      commands:
+        - "shards give %player% 25"
+      messages:
+        - "&aSanta drops 25 shards into your stocking!"
+      event:
+        firework: true
+        sound: "ENTITY_FIREWORK_ROCKET_LAUNCH"

@@ -1,0 +1,10 @@
+tracks:
+  12days:
+    file: "12_days.nbs"
+    display_name: "&a12 Days of Christmas!"
+  carol:
+    file: "carol_of_the_bells.nbs"
+    display_name: "&bCarol of the Bells"
+  frosty:
+    file: "frosty_the_snowman.nbs"
+    display_name: "&dFrosty the Snowman!"

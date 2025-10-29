@@ -1,0 +1,42 @@
+# Configuration for the Daily Gift system
+
+daily-gifts:
+  item:
+    # This item must match the command in shop.yml for the buyable gift
+    material: KNOWLEDGE_BOOK
+    display_name: "&6&lDaily Christmas Gift"
+    lore:
+      - "&7Right-click to open and claim"
+      - "&7your festive reward!"
+      - " "
+      - "&cWarning: May contain coal."
+
+  rewards:
+    # Rewards section for the 'default' LuckPerms group
+    default:
+      # Example reward 1: Common reward
+      common_coal:
+        chance: 50
+        commands:
+          - "give %player% coal 10"
+        messages:
+          - "&cSanta gave you a lump of coal... you must have been naughty!"
+        event:
+          firework: false
+          sound: "ENTITY_WITCH_DRINK"
+
+      # Example reward 2: Rare reward
+      rare_money:
+        chance: 5
+        commands:
+          - "eco give %player% 1000"
+          - "shards give %player% 50"
+        messages:
+          - "&aHO HO HO! You found a rare prize!"
+        event:
+          firework: true
+          sound: "ENTITY_PLAYER_LEVELUP"
+
+    # You can add group-specific rewards here, e.g., 'vip'
+    # vip:
+    #   ...

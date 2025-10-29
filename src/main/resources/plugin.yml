@@ -2,3 +2,43 @@ name: UltimateChristmas
 version: '1.0-SNAPSHOT'
 main: fr.elias.ultimateChristmas.UltimateChristmas
 api-version: '1.21'
+loadbefore: [LuckPerms, NoteBlockAPI, LibsDisguises] # Suggestion: Load before dependencies if they are critical
+authors: [Elias] # Add yourself here
+
+commands:
+  shards:
+    description: Shard balance / shop / admin give
+    usage: /shards [shop|give|set]
+    permission: ultimateChristmas.shards
+    permission-message: "&cNo permission."
+
+
+  # Music Command: /playchristmas <track> /playchristmas stop
+  playchristmas:
+    description: Play festive music via NoteBlockAPI.
+    usage: /<command> <track|stop>
+    permission: ultimateChristmas.music.play
+    aliases: [christmasmusic, music]
+
+  # Santa Admin Command: /santaadmin spawn|despawn|reload
+  santaadmin:
+    description: Admin commands for the Santa NPC.
+    usage: /<command> <spawn|despawn|reload>
+    permission: ultimateChristmas.admin
+
+permissions:
+  ultimateChristmas.admin:
+    description: Grants access to all ultimateChristmas admin commands.
+    default: op
+  ultimateChristmas.shards.base:
+    description: Allows players to check their shard balance.
+    default: true
+  ultimateChristmas.shop.use:
+    description: Allows players to open the shard shop GUI.
+    default: true
+  ultimateChristmas.music.play:
+    description: Allows players to use the music playback command.
+    default: true
+  ultimateChristmas.snowball.reward:
+    description: Allows players to earn rewards for hitting villagers with snowballs.
+    default: true

@@ -1,0 +1,187 @@
+# Configuration for the Shard Shop GUI
+#
+# Players do /shards shop to open.
+# When they click an item:
+#   -> They get a confirmation GUI (YES/NO).
+#
+# price: cost in shards
+# slot: inventory slot in the 6x9 GUI (0-53)
+#
+# TWO WAYS TO DELIVER THE REWARD:
+#
+# 1) COMMAND MODE (has "commands:")
+#    - Runs each command from console.
+#    - "%player%" will be replaced with the player's name.
+#
+# 2) DIRECT ITEM MODE (NO "commands:")
+#    - The plugin builds an ItemStack and gives it directly.
+#      Supported keys for direct items:
+#        icon                <Material>       (required)
+#        display_name        <String>
+#        lore                <List<String>>
+#        custom_model_data   <int>            (optional)
+#        attackdamage        <double>         (optional)
+#        attackspeed         <double>         (optional)
+#        max_durability      <int>            (optional, damageable items only!)
+#
+#      - attackdamage / attackspeed become attribute modifiers on MAINHAND
+#      - max_durability sets how many "uses left" the item appears to have
+#        and is shown in the lore as "Durability: X uses left"
+#      - item gets Unbreaking I for the glow, with hidden attributes
+#
+# NOTE:
+# If "commands:" is present, we IGNORE the direct item path entirely.
+
+shop-title: "&6&l🎅 Santa's Workshop Store"
+
+items:
+
+  # -------------------------------------------------
+  # 1) Simple item: Give 1 diamond by console command
+  #    COMMAND MODE
+  #
+  # Player confirms -> we just run the command(s).
+  # No durability / stats here because we aren't building the item.
+  # -------------------------------------------------
+  diamond_item:
+    icon: DIAMOND
+    slot: 10
+    price: 100
+    display_name: "&b&lShiny Diamond"
+    lore:
+      - "&7A classic Christmas treasure!"
+      - "&cLimited stock!"
+    commands:
+      - "give %player% diamond 1"
+    custom_model_data: 0
+
+
+  # -------------------------------------------------
+  # 2) Custom sword with stats
+  #    DIRECT ITEM MODE (NO commands)
+  #
+  # This sword is built in code:
+  #  - gets +attackdamage and +attackspeed attributes
+  #  - will glow (fake unbreaking)
+  #  - we also set durability using max_durability
+  #
+  # max_durability: 42
+  #   -> player sees "Durability: 42 uses left"
+  #   -> item is already worn down to ~42 swings left
+  # -------------------------------------------------
+  sword_of_light:
+    icon: GOLDEN_SWORD
+    slot: 12
+    price: 500
+    display_name: "&e&lSword of Light"
+    lore:
+      - "&7Forged in Santa's forge."
+      - "&7Grants power against the &aGrinch&7."
+      - "&f"
+      - "&6+ Custom Damage"
+      - "&6+ Attack Speed"
+      - "&f"
+      - "&7A blade of holy peppermint fury."
+    attackdamage: 10          # extra attack damage
+    attackspeed: 10           # extra attack speed (higher = faster swing)
+    max_durability: 42        # ~42 uses left when received
+    custom_model_data: 100    # resource pack model ID (optional)
+
+
+  # -------------------------------------------------
+  # 3) Extra daily gift pass / token
+  #    COMMAND MODE
+  #
+  # This is basically "buy a voucher".
+  # We just run a console command to hand them a book/token.
+  #
+  # Since this uses `commands:`, durability/attributes are ignored.
+  # -------------------------------------------------
+  daily_gift_pass:
+    icon: KNOWLEDGE_BOOK
+    slot: 14
+    price: 250
+    display_name: "&6&lExtra Daily Gift"
+    lore:
+      - "&7Buy another chance for a rare prize!"
+      - "&fRedeem this to roll the daily gift again."
+      - "&7One-time consumable token."
+    commands:
+      - "give %player% knowledge_book 1"
+    custom_model_data: 201
+
+
+  # -------------------------------------------------
+  # 4) Heavy custom axe
+  #    DIRECT ITEM MODE
+  #
+  # High damage, slower swing. This feels like a boss weapon.
+  # We ALSO give it limited durability.
+  #
+  # attackspeed: negative number ==> slower than vanilla
+  # max_durability: 25          ==> it's almost broken when you get it
+  # -------------------------------------------------
+  santa_axe:
+    icon: NETHERITE_AXE
+    slot: 16
+    price: 750
+    display_name: "&4&lSanta's Wrath Axe"
+    lore:
+      - "&7Ripped from the hands of a"
+      - "&cdemonic snow golem &7in 1997."
+      - "&f"
+      - "&c+ Massive Damage"
+      - "&7Slow to swing"
+      - "&f"
+      - "&4Forged in rage. Wield with care."
+    attackdamage: 20          # way stronger than normal
+    attackspeed: -2           # swings slower (negative slows you down)
+    max_durability: 25        # only ~25 hard hits left
+    custom_model_data: 202    # custom texture/model index
+
+
+  # -------------------------------------------------
+  # 5) Santa Hat cosmetic
+  #    DIRECT ITEM MODE
+  #
+  # This is armor, so it IS damageable in vanilla.
+  # If you want it to be "almost unbreakable" for fun, set max_durability high.
+  #
+  # We'll still hide attributes and glow it so it's special.
+  #
+  # If you'd rather it not show a durability line, just remove max_durability.
+  # -------------------------------------------------
+  santa_hat:
+    icon: LEATHER_HELMET
+    slot: 28
+    price: 150
+    display_name: "&c&lSanta Hat"
+    lore:
+      - "&7Wear with pride!"
+      - "&fLimited Event Cosmetic"
+      - "&f"
+      - "&c100% festive certified."
+    # No commands => direct item mode
+    # No attack stats => it's cosmetic
+    max_durability: 150       # give them ~150 uses of the hat before it breaks
+    custom_model_data: 303
+
+
+  # -------------------------------------------------
+  # 6) Diamond bundle
+  #    COMMAND MODE
+  #
+  # Just bulk resources. You can add as many bundles as you like
+  # with different prices.
+  # -------------------------------------------------
+  diamond_stack:
+    icon: DIAMOND
+    slot: 30
+    price: 800
+    display_name: "&b&lPouch of Diamonds"
+    lore:
+      - "&7Contains &b16x Diamonds&7."
+      - "&7Riches for the generous."
+    commands:
+      - "give %player% diamond 16"
+    custom_model_data: 0
