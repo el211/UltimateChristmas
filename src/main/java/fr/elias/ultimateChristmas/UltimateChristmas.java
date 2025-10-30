@@ -3,10 +3,7 @@ package fr.elias.ultimateChristmas;
 import fr.elias.ultimateChristmas.commands.PlayFestiveMusicCommand;
 import fr.elias.ultimateChristmas.commands.SantaAdminCommand;
 import fr.elias.ultimateChristmas.commands.ShardsCommand;
-import fr.elias.ultimateChristmas.daily.DailyGiftCommand;
-import fr.elias.ultimateChristmas.daily.DailyGiftListener;
-import fr.elias.ultimateChristmas.daily.DailyGiftManager;
-import fr.elias.ultimateChristmas.daily.DailyProgressStore;
+import fr.elias.ultimateChristmas.daily.*;
 import fr.elias.ultimateChristmas.economy.ShardManager;
 import fr.elias.ultimateChristmas.economy.ShardShopGUI;
 import fr.elias.ultimateChristmas.economy.ShardShopListener;
@@ -165,16 +162,15 @@ public class UltimateChristmas extends JavaPlugin {
                     new ShardsCommand(this, shardManager, shardShopGUI)
             );
         }
-        if (getCommand("daily") != null) {
-            // FIX: use the constructor that DailyCommand actually provides
-            getCommand("daily").setExecutor(
-                    new fr.elias.ultimateChristmas.daily.DailyCommand(
-                            invManager,
-                            dailyGiftManager,
-                            dailyProgressStore
-                    )
-            );
+        // Replace old "daily" command registration with the new Advent command:
+        if (getCommand("advent") != null) {
+            AdventCalendarCommand adventCmd =
+                    new AdventCalendarCommand(invManager, dailyGiftManager, dailyProgressStore);
+            getCommand("advent").setExecutor(adventCmd);
+            getCommand("advent").setTabCompleter(adventCmd);
         }
+
+
 
         if (getCommand("playchristmas") != null) {
             getCommand("playchristmas").setExecutor(

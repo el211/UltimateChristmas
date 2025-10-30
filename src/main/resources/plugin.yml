@@ -31,10 +31,12 @@ commands:
     usage: /ucgift give <player>
     permission: ultimatechristmas.gift.give
 
-  daily:
-    description: Open the Daily Gifts browser
-    usage: /daily
-    permission: ultimatechristmas.daily
+  advent:
+    description: Open or manage the Advent Calendar
+    aliases: [calendar, adventcalendar]
+    usage: "/advent [open|claim|remaining|streak|help] [player]"
+    permission: ultimatechristmas.advent
+
 
 permissions:
   ultimateChristmas.admin:
@@ -56,3 +58,9 @@ permissions:
     default: op
   ultimatechristmas.daily:
     default: true
+  ultimatechristmas.advent:
+    description: Use Advent Calendar commands
+    default: true
+  ultimatechristmas.advent.admin:
+    description: Manage others’ calendar claims / view streaks
+    default: op
