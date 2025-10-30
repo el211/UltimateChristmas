@@ -1,8 +1,73 @@
-# Configuration for the Daily Gift system
-
 daily-gifts:
+  debug: true
+
+  claim:
+    timezone: "Europe/Paris"   # Used for daily reset
+    reset-hour: 5              # Day resets at 05:00 in the above timezone
+
+  # Advent calendar season settings
+  calendar:
+    start:
+      date: "2025-12-01"       # Day 1 of the season
+      timezone: "Europe/Paris" # Optional override for calendar math
+      length: 25               # Number of days (24/25 typical)
+
+    # Mapping by DAY SLOT (1..length), relative to start.date
+    "1": "common_coal"
+    "2": "rare_money"
+    "3": "common_coal"
+    "4": "rare_money"
+    # Add "5".."25" as you like
+    # vip:
+    #   "1": "rare_money"
+    #   "2": "rare_money"
+
+  messages:
+    already-claimed: "&cYou've already claimed today's reward. Next in &f%remaining%&c."
+    claimed: "&aYou claimed today's reward! &7(Current streak: &f%streak%&7)"
+    no-reward-config: "&cNo gifts configured."
+
+  gui:
+    title: "&6&lDaily Gifts"
+    rows: 6
+    rewards_per_page: 21
+
+    border:
+      enabled: true
+      material: GRAY_STAINED_GLASS_PANE
+
+    # Optional exact slots for reward cards (row,col). If omitted, a sensible rectangle is used.
+    reward_slots:
+      - "1,1"
+      - "1,2"
+      - "1,3"
+      - "1,4"
+      - "1,5"
+      - "1,6"
+      - "1,7"
+      - "2,1"
+      - "2,2"
+      - "2,3"
+      - "2,4"
+      - "2,5"
+      - "2,6"
+      - "2,7"
+      - "3,1"
+      - "3,2"
+      - "3,3"
+      - "3,4"
+      - "3,5"
+      - "3,6"
+      - "3,7"
+
+    prev:
+      material: ARROW
+    next:
+      material: ARROW
+    open:
+      material: LIME_WOOL
+
   item:
-    # This item must match the command in shop.yml for the buyable gift
     material: KNOWLEDGE_BOOK
     display_name: "&6&lDaily Christmas Gift"
     lore:
@@ -12,22 +77,31 @@ daily-gifts:
       - "&cWarning: May contain coal."
 
   rewards:
-    # Rewards section for the 'default' LuckPerms group
     default:
-      # Example reward 1: Common reward
       common_coal:
         chance: 50
+        icon:
+          material: COAL
+          name: "&7common_coal"
+          lore:
+            - "&7Weight: 50"
+            - "&7Commands: &f/give %player% coal 10"
         commands:
           - "give %player% coal 10"
         messages:
           - "&cSanta gave you a lump of coal... you must have been naughty!"
         event:
           firework: false
-          sound: "ENTITY_WITCH_DRINK"
+          sound: "ENTITY_WITCH_DRINK"   # enum-style name works with your code
 
-      # Example reward 2: Rare reward
       rare_money:
         chance: 5
+        icon:
+          material: EMERALD
+          name: "&arare_money"
+          lore:
+            - "&7Weight: 5"
+            - "&7Commands: &f/eco give %player% 1000"
         commands:
           - "eco give %player% 1000"
           - "shards give %player% 50"
@@ -37,6 +111,21 @@ daily-gifts:
           firework: true
           sound: "ENTITY_PLAYER_LEVELUP"
 
-    # You can add group-specific rewards here, e.g., 'vip'
+    # Example extra group:
     # vip:
-    #   ...
+    #   candy_bundle:
+    #     chance: 40
+    #     icon:
+    #       material: COOKIE
+    #       name: "&dCandy Bundle"
+    #       lore:
+    #         - "&7Weight: 40"
+    #         - "&7VIP bonus cookies!"
+    #     commands:
+    #       - "give %player% cookie 32"
+    #       - "shards give %player% 25"
+    #     messages:
+    #       - "&dVIP bonus: &f+32 cookies &7and &f25 shards&7!"
+    #     event:
+    #       firework: true
+    #       sound: "EXPERIENCE_ORB_PICKUP"

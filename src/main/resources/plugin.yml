@@ -26,6 +26,16 @@ commands:
     usage: /<command> <spawn|despawn|reload>
     permission: ultimateChristmas.admin
 
+  ucgift:
+    description: Daily gift commands
+    usage: /ucgift give <player>
+    permission: ultimatechristmas.gift.give
+
+  daily:
+    description: Open the Daily Gifts browser
+    usage: /daily
+    permission: ultimatechristmas.daily
+
 permissions:
   ultimateChristmas.admin:
     description: Grants access to all ultimateChristmas admin commands.
@@ -41,4 +51,8 @@ permissions:
     default: true
   ultimateChristmas.snowball.reward:
     description: Allows players to earn rewards for hitting villagers with snowballs.
+    default: true
+  ultimatechristmas.ucgift:
+    default: op
+  ultimatechristmas.daily:
     default: true

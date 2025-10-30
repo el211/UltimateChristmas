@@ -3,12 +3,19 @@ package fr.elias.ultimateChristmas;
 import fr.elias.ultimateChristmas.commands.PlayFestiveMusicCommand;
 import fr.elias.ultimateChristmas.commands.SantaAdminCommand;
 import fr.elias.ultimateChristmas.commands.ShardsCommand;
+import fr.elias.ultimateChristmas.daily.DailyGiftCommand;
+import fr.elias.ultimateChristmas.daily.DailyGiftListener;
 import fr.elias.ultimateChristmas.daily.DailyGiftManager;
+import fr.elias.ultimateChristmas.daily.DailyProgressStore;
 import fr.elias.ultimateChristmas.economy.ShardManager;
 import fr.elias.ultimateChristmas.economy.ShardShopGUI;
 import fr.elias.ultimateChristmas.economy.ShardShopListener;
 import fr.elias.ultimateChristmas.integration.WorldGuardIntegration;
-import fr.elias.ultimateChristmas.listeners.*;
+import fr.elias.ultimateChristmas.listeners.BlockBreakListener;
+import fr.elias.ultimateChristmas.listeners.CustomDurabilityListener;
+import fr.elias.ultimateChristmas.listeners.EntityKillListener;
+import fr.elias.ultimateChristmas.listeners.PlayerListener;
+import fr.elias.ultimateChristmas.listeners.SnowballHitListener;
 import fr.elias.ultimateChristmas.music.MusicManager;
 import fr.elias.ultimateChristmas.santa.SantaManager;
 import fr.elias.ultimateChristmas.santa.SantaProtectionListener;
@@ -46,6 +53,7 @@ public class UltimateChristmas extends JavaPlugin {
 
     // cache for capability detection
     private boolean paperPathfinderAvailable;
+    private DailyProgressStore dailyProgressStore;
 
     /* -------------------------------------------------
      * ENABLE / DISABLE
@@ -91,6 +99,8 @@ public class UltimateChristmas extends JavaPlugin {
 
         // Daily gift claim / cooldown logic
         this.dailyGiftManager = new DailyGiftManager(this);
+        this.dailyProgressStore = new DailyProgressStore(this);
+        this.dailyGiftManager.setProgressStore(this.dailyProgressStore);
 
         // Music / festive song playback
         this.musicManager = new MusicManager(this);
@@ -107,8 +117,7 @@ public class UltimateChristmas extends JavaPlugin {
         this.invManager = new InventoryManager(this);
         this.invManager.init();
 
-        // SmartInvs also wants to know our plugin as its "owner" singleton.
-        // Some builds of SmartInvs require this:
+        // Some versions of SmartInvs require informing the static plugin holder.
         SmartInvsPlugin.setPlugin(this);
 
         // Shard shop GUI (uses invManager + shardManager)
@@ -130,8 +139,8 @@ public class UltimateChristmas extends JavaPlugin {
         pm.registerEvents(new BlockBreakListener(this, shardManager), this);
         pm.registerEvents(new EntityKillListener(this, shardManager), this);
 
-        // open daily present items
-        pm.registerEvents(new DailyGiftUseListener(this, dailyGiftManager), this);
+        // NEW: SmartInvs-based daily gift confirm/open
+        pm.registerEvents(new DailyGiftListener(this, dailyGiftManager, invManager), this);
 
         // snowball fights / slow effect etc
         pm.registerEvents(new SnowballHitListener(this), this);
@@ -142,11 +151,10 @@ public class UltimateChristmas extends JavaPlugin {
         // join/quit etc player events, messages, etc
         pm.registerEvents(new PlayerListener(this), this);
 
-        // handle right-click "Santa's Present" gift head
-        pm.registerEvents(new PresentInteractListener(this), this);
-
         // protect Santa from damage / block renames / hologram bars etc
         pm.registerEvents(new SantaProtectionListener(this, santaManager), this);
+
+        // custom “uses left” durability system
         pm.registerEvents(new CustomDurabilityListener(this), this);
 
         /*
@@ -155,6 +163,16 @@ public class UltimateChristmas extends JavaPlugin {
         if (getCommand("shards") != null) {
             getCommand("shards").setExecutor(
                     new ShardsCommand(this, shardManager, shardShopGUI)
+            );
+        }
+        if (getCommand("daily") != null) {
+            // FIX: use the constructor that DailyCommand actually provides
+            getCommand("daily").setExecutor(
+                    new fr.elias.ultimateChristmas.daily.DailyCommand(
+                            invManager,
+                            dailyGiftManager,
+                            dailyProgressStore
+                    )
             );
         }
 
@@ -168,6 +186,11 @@ public class UltimateChristmas extends JavaPlugin {
             getCommand("santaadmin").setExecutor(
                     new SantaAdminCommand(this, santaManager)
             );
+        }
+
+        // Optional helper command to give a daily gift item (if you added it to plugin.yml)
+        if (getCommand("ucgift") != null) {
+            getCommand("ucgift").setExecutor(new DailyGiftCommand(this));
         }
 
         /*
@@ -197,6 +220,7 @@ public class UltimateChristmas extends JavaPlugin {
         if (shardManager != null) {
             shardManager.save();
         }
+        if (dailyProgressStore != null) dailyProgressStore.save();
 
         Msg.info("ultimateChristmas disabled.");
     }
@@ -215,6 +239,8 @@ public class UltimateChristmas extends JavaPlugin {
         }
         this.activeWalkController = controller;
     }
+
+    public DailyProgressStore getDailyProgressStore() { return dailyProgressStore; }
 
     /* -------------------------------------------------
      * GETTERS / HELPERS
