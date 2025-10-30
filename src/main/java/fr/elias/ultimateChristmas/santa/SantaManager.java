@@ -28,6 +28,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.NamespacedKey;
+import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -45,6 +49,11 @@ public class SantaManager {
     private Mob currentSanta;
     private ProtectedRegion currentSantaRegion; // WG leash region
     private final ShardManager shardManager;
+    // Marks dropped presents so we can clean them later
+    private final NamespacedKey PRESENT_KEY;
+    // Block spawns until this epoch millis (set on startup)
+    private long startupBlockUntilMillis = 0L;
+
 
     // Timestamps (seconds)
     private long spawnUnixSeconds = 0L;
@@ -55,6 +64,7 @@ public class SantaManager {
 
     // Repeating scheduler task
     private BukkitTask schedulerTask;
+    // Marks dropped presents so we can clean them later
 
     public SantaManager(UltimateChristmas plugin,
                         WorldGuardIntegration wgIntegration,
@@ -62,7 +72,9 @@ public class SantaManager {
         this.plugin = plugin;
         this.wgIntegration = wgIntegration;
         this.shardManager = shardManager;
+        this.PRESENT_KEY = new NamespacedKey(plugin, "uc_present");
     }
+
 
 
     // --------------------------------------------------------------------
@@ -78,10 +90,36 @@ public class SantaManager {
         plugin.getLogger().info("[SantaManager] startScheduler(): called. debugEnabled()=" + debugEnabled());
 
         dbg("Scheduler: starting...");
+        // Read startup gating options once
+        FileConfiguration startCfg = plugin.getConfig("santa.yml");
+        boolean spawnOnStartup = startCfg.getBoolean("spawn.spawn_on_startup", false);
+        int initialDelaySec = Math.max(0, startCfg.getInt("spawn.initial_spawn_delay_seconds", 30));
+        boolean requireOnline = startCfg.getBoolean("spawn.require_player_online", true);
+
+        // If not spawning immediately, block the scheduler from spawning until the delay elapses
+        if (!spawnOnStartup && startupBlockUntilMillis == 0L) {
+            startupBlockUntilMillis = System.currentTimeMillis() + (initialDelaySec * 1000L);
+            // also pretend "we just spawned" so cooldown logic works as soon as we unblock
+            spawnUnixSeconds = nowSeconds();
+            lastGiftDropSeconds = spawnUnixSeconds;
+            dbg("Startup gate: blocking spawns until +" + initialDelaySec + "s. require_player_online=" + requireOnline);
+        }
 
         schedulerTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
 
             FileConfiguration cfg = plugin.getConfig("santa.yml");
+            // Honor startup block
+            if (startupBlockUntilMillis > System.currentTimeMillis()) {
+                dbg("Scheduler: startup block active, skipping tick.");
+                return;
+            }
+
+        // Honor require_player_online
+            if (cfg.getBoolean("spawn.require_player_online", true) && Bukkit.getOnlinePlayers().isEmpty()) {
+                dbg("Scheduler: require_player_online=true but no players online, skipping.");
+                return;
+            }
+
             if (!cfg.getBoolean("enabled", true)) {
                 dbg("Scheduler: santa.yml enabled=false, skipping tick.");
                 return;
@@ -222,6 +260,10 @@ public class SantaManager {
         } else {
             dbg("despawnSantaIfAny(): no living Santa to remove.");
         }
+        // Clean presents around the last known location (if any)
+        try {
+            if (santa != null) clearNearbyPresents(santa.getLocation(), 8.0);
+        } catch (Throwable ignored) {}
 
         // IMPORTANT:
         // treat "now" as the last-spawn timestamp baseline so cooldown works.
@@ -295,6 +337,10 @@ public class SantaManager {
         dbg("spawnSantaFromConfig(): snapToGround -> " + loc(spawnLoc));
 
         loadChunk(spawnLoc);
+        // Clean up any old presents from previous runs before spawning
+        clearNearbyPresents(spawnLoc, 8.0);
+        // Also schedule a tiny delayed cleanup in case something drops same tick
+        Bukkit.getScheduler().runTaskLater(plugin, () -> clearNearbyPresents(spawnLoc, 8.0), 10L);
 
         String santaSkinName = cfg.getString("skin", "brcdev");
         String santaDisplayName = choice.displayNameColored;
@@ -351,6 +397,21 @@ public class SantaManager {
 
         // Apply disguise
         applyDisguise(currentSanta, santaSkinName, santaDisplayName);
+        // Brief invisibility to hide base mob until disguise is applied
+        try {
+            currentSanta.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 40, 1, true, false, false));
+        } catch (Throwable ignored) {}
+
+        // Apply disguise a couple ticks later to reduce flash
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            applyDisguise(currentSanta, santaSkinName, santaDisplayName);
+            // remove invis a bit after disguise
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (currentSanta != null && !currentSanta.isDead()) {
+                    currentSanta.removePotionEffect(PotionEffectType.INVISIBILITY);
+                }
+            }, 10L);
+        }, 2L);
 
         // Walking controller (random pathing inside region)
         if (walkRegion == null) {
@@ -608,16 +669,19 @@ public class SantaManager {
             stack = applyNameAndLore(stack, displayName, loreLines);
         }
 
-        // Add glint
+        // Add glint + mark as present for cleanup
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
-            dbg("dropGift(): adding glint to final stack");
+            dbg("dropGift(): adding glint and PDC flag to final stack");
             meta.addEnchant(Enchantment.LURE, 1, true);
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+            // mark this item so we can clean it later
+            meta.getPersistentDataContainer().set(PRESENT_KEY, PersistentDataType.BYTE, (byte) 1);
             stack.setItemMeta(meta);
         } else {
-            dbg("dropGift(): WARNING getItemMeta() is null after build, skipping enchant");
+            dbg("dropGift(): WARNING getItemMeta() is null after build, skipping enchant/PDC");
         }
+
 
         // final sanity dump for skull texture
         ItemMeta finalMeta = stack.getItemMeta();
@@ -1049,6 +1113,18 @@ public class SantaManager {
         base.setItemMeta(meta);
         dbg("applyNameAndLore(): done");
         return base;
+    }
+    private void clearNearbyPresents(Location center, double radius) {
+        if (center == null || center.getWorld() == null) return;
+        center.getWorld().getNearbyEntities(center, radius, radius, radius, e -> e instanceof org.bukkit.entity.Item)
+                .forEach(e -> {
+                    org.bukkit.entity.Item item = (org.bukkit.entity.Item) e;
+                    ItemMeta m = item.getItemStack().getItemMeta();
+                    if (m != null && m.getPersistentDataContainer().has(PRESENT_KEY, PersistentDataType.BYTE)) {
+                        item.remove();
+                    }
+                });
+        dbg("clearNearbyPresents(): removed marked presents around " + loc(center) + " r=" + radius);
     }
 
     // --------------------------------------------------------------------
