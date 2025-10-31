@@ -119,9 +119,10 @@
         <dependency>
             <groupId>com.github.koca2000</groupId>
             <artifactId>NoteBlockAPI</artifactId>
-            <version>1.6.3</version>
-            <scope>compile</scope>
+            <version>master-8c79784f8e-1</version>
+            <scope>provided</scope>
         </dependency>
+
         <dependency>
             <groupId>com.github.retrooper</groupId>
             <artifactId>packetevents-spigot</artifactId>

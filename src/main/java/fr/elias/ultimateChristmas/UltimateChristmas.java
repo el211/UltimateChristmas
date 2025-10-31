@@ -3,7 +3,11 @@ package fr.elias.ultimateChristmas;
 import fr.elias.ultimateChristmas.commands.PlayFestiveMusicCommand;
 import fr.elias.ultimateChristmas.commands.SantaAdminCommand;
 import fr.elias.ultimateChristmas.commands.ShardsCommand;
-import fr.elias.ultimateChristmas.daily.*;
+import fr.elias.ultimateChristmas.daily.AdventCalendarCommand;
+import fr.elias.ultimateChristmas.daily.DailyGiftCommand;
+import fr.elias.ultimateChristmas.daily.DailyGiftListener;
+import fr.elias.ultimateChristmas.daily.DailyGiftManager;
+import fr.elias.ultimateChristmas.daily.DailyProgressStore;
 import fr.elias.ultimateChristmas.economy.ShardManager;
 import fr.elias.ultimateChristmas.economy.ShardShopGUI;
 import fr.elias.ultimateChristmas.economy.ShardShopListener;
@@ -27,6 +31,8 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+
 public class UltimateChristmas extends JavaPlugin {
 
     /* -------------------------------------------------
@@ -41,6 +47,7 @@ public class UltimateChristmas extends JavaPlugin {
     private InventoryManager invManager;
     private ShardShopGUI shardShopGUI;
     private DailyGiftManager dailyGiftManager;
+    private DailyProgressStore dailyProgressStore;
     private MusicManager musicManager;
     private WorldGuardIntegration wgIntegration;
     private SantaManager santaManager;
@@ -50,7 +57,6 @@ public class UltimateChristmas extends JavaPlugin {
 
     // cache for capability detection
     private boolean paperPathfinderAvailable;
-    private DailyProgressStore dailyProgressStore;
 
     /* -------------------------------------------------
      * ENABLE / DISABLE
@@ -58,6 +64,10 @@ public class UltimateChristmas extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
+
+        // Ensure data folder + music subfolder exist
+        getDataFolder().mkdirs();
+        new File(getDataFolder(), "music").mkdirs();
 
         /*
          * 1) Load / create all configs
@@ -99,7 +109,7 @@ public class UltimateChristmas extends JavaPlugin {
         this.dailyProgressStore = new DailyProgressStore(this);
         this.dailyGiftManager.setProgressStore(this.dailyProgressStore);
 
-        // Music / festive song playback
+        // Music / festive song playback (IMPORTANT: construct before registering /playchristmas)
         this.musicManager = new MusicManager(this);
 
         // Region leash + safety integration for Santa
@@ -136,13 +146,13 @@ public class UltimateChristmas extends JavaPlugin {
         pm.registerEvents(new BlockBreakListener(this, shardManager), this);
         pm.registerEvents(new EntityKillListener(this, shardManager), this);
 
-        // NEW: SmartInvs-based daily gift confirm/open
+        // SmartInvs-based daily gift/advent GUI interactions
         pm.registerEvents(new DailyGiftListener(this, dailyGiftManager, invManager), this);
 
-        // snowball fights / slow effect etc
+        // snowball fights / villager hit rewards
         pm.registerEvents(new SnowballHitListener(this), this);
 
-        // shop close hook (currently mostly placeholder for future cleanup)
+        // shop close hook (currently placeholder for future cleanup)
         pm.registerEvents(new ShardShopListener(this, shardShopGUI), this);
 
         // join/quit etc player events, messages, etc
@@ -162,7 +172,8 @@ public class UltimateChristmas extends JavaPlugin {
                     new ShardsCommand(this, shardManager, shardShopGUI)
             );
         }
-        // Replace old "daily" command registration with the new Advent command:
+
+        // Advent calendar command (replaces old /daily)
         if (getCommand("advent") != null) {
             AdventCalendarCommand adventCmd =
                     new AdventCalendarCommand(invManager, dailyGiftManager, dailyProgressStore);
@@ -170,12 +181,11 @@ public class UltimateChristmas extends JavaPlugin {
             getCommand("advent").setTabCompleter(adventCmd);
         }
 
-
-
+        // Music command (tab-complete with track keys)
         if (getCommand("playchristmas") != null) {
-            getCommand("playchristmas").setExecutor(
-                    new PlayFestiveMusicCommand(this, musicManager)
-            );
+            PlayFestiveMusicCommand cmdExec = new PlayFestiveMusicCommand(this, musicManager);
+            getCommand("playchristmas").setExecutor(cmdExec);
+            getCommand("playchristmas").setTabCompleter(cmdExec);
         }
 
         if (getCommand("santaadmin") != null) {
@@ -184,7 +194,7 @@ public class UltimateChristmas extends JavaPlugin {
             );
         }
 
-        // Optional helper command to give a daily gift item (if you added it to plugin.yml)
+        // Optional helper command to give a daily gift item (if added to plugin.yml)
         if (getCommand("ucgift") != null) {
             getCommand("ucgift").setExecutor(new DailyGiftCommand(this));
         }
@@ -194,6 +204,7 @@ public class UltimateChristmas extends JavaPlugin {
          */
         santaManager.startScheduler();
 
+        // NOTE: Do NOT register permissions programmatically. Keep them in plugin.yml
         Msg.info("ultimateChristmas enabled. Ho ho ho!");
     }
 
@@ -203,7 +214,7 @@ public class UltimateChristmas extends JavaPlugin {
          * Graceful shutdown:
          * - Despawn Santa and cancel his timers
          * - Stop any music loops
-         * - Persist shard balances
+         * - Persist shard balances & daily progress
          */
         if (santaManager != null) {
             santaManager.despawnSantaIfAny();
@@ -216,7 +227,10 @@ public class UltimateChristmas extends JavaPlugin {
         if (shardManager != null) {
             shardManager.save();
         }
-        if (dailyProgressStore != null) dailyProgressStore.save();
+
+        if (dailyProgressStore != null) {
+            dailyProgressStore.save();
+        }
 
         Msg.info("ultimateChristmas disabled.");
     }

@@ -2,65 +2,68 @@ name: UltimateChristmas
 version: '1.0-SNAPSHOT'
 main: fr.elias.ultimateChristmas.UltimateChristmas
 api-version: '1.21'
-loadbefore: [LuckPerms, NoteBlockAPI, LibsDisguises] # Suggestion: Load before dependencies if they are critical
-authors: [Elias] # Add yourself here
+depend: [NoteBlockAPI]
+loadbefore: [LuckPerms, LibsDisguises]
+authors: [Elias]
+
 
 commands:
   shards:
     description: Shard balance / shop / admin give
-    usage: /shards [shop|give|set]
-    permission: ultimateChristmas.shards
-    permission-message: "&cNo permission."
+    usage: "/shards [shop|give|set]"
+    permission: ultimatechristmas.shards
 
-
-  # Music Command: /playchristmas <track> /playchristmas stop
   playchristmas:
-    description: Play festive music via NoteBlockAPI.
-    usage: /<command> <track|stop>
-    permission: ultimateChristmas.music.play
-    aliases: [christmasmusic, music]
+    description: Play a configured .nbs track
+    usage: "/playchristmas <trackKey>|stop|list"
+    permission: ultimatechristmas.music.play
 
-  # Santa Admin Command: /santaadmin spawn|despawn|reload
   santaadmin:
     description: Admin commands for the Santa NPC.
-    usage: /<command> <spawn|despawn|reload>
-    permission: ultimateChristmas.admin
+    usage: "/santaadmin <spawn|despawn|reload>"
+    permission: ultimatechristmas.admin
 
   ucgift:
     description: Daily gift commands
-    usage: /ucgift give <player>
+    usage: "/ucgift give <player>"
     permission: ultimatechristmas.gift.give
 
   advent:
     description: Open or manage the Advent Calendar
     aliases: [calendar, adventcalendar]
     usage: "/advent [open|claim|remaining|streak|help] [player]"
-    permission: ultimatechristmas.advent
-
+    permission: ultimatechristmas.advent.use
 
 permissions:
-  ultimateChristmas.admin:
-    description: Grants access to all ultimateChristmas admin commands.
+  ultimatechristmas.admin:
+    description: Grants access to all UltimateChristmas admin commands.
     default: op
-  ultimateChristmas.shards.base:
-    description: Allows players to check their shard balance.
+
+  # Shards
+  ultimatechristmas.shards:
+    description: Use /shards base command (balance, etc.)
     default: true
-  ultimateChristmas.shop.use:
-    description: Allows players to open the shard shop GUI.
+  ultimatechristmas.shop.use:
+    description: Open the shard shop GUI.
     default: true
-  ultimateChristmas.music.play:
-    description: Allows players to use the music playback command.
-    default: true
-  ultimateChristmas.snowball.reward:
-    description: Allows players to earn rewards for hitting villagers with snowballs.
-    default: true
-  ultimatechristmas.ucgift:
+
+  # Music
+  ultimatechristmas.music.play:
+    description: Allows using /playchristmas
     default: op
-  ultimatechristmas.daily:
+
+  # Snowball / villager rewards
+  ultimatechristmas.snowball.reward:
+    description: Allows players to earn rewards for snowball hits.
     default: true
-  ultimatechristmas.advent:
-    description: Use Advent Calendar commands
+
+  # Daily gift / advent
+  ultimatechristmas.gift.give:
+    description: Allows /ucgift give <player>.
+    default: op
+  ultimatechristmas.advent.use:
+    description: Use Advent Calendar commands (/advent).
     default: true
   ultimatechristmas.advent.admin:
-    description: Manage others’ calendar claims / view streaks
+    description: Manage others’ calendar claims / view streaks.
     default: op
