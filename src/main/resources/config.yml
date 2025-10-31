@@ -42,20 +42,22 @@ toggles:
 
 # ❄ Snow effect settings
 snow:
-  enabled: true                 # auto-enable snow for everyone on startup
-  apply-to-all-players: true    # apply to current & future joins (unless they opt out)
-  radius: 6                     # horizontal radius of effect around each player
-  duration: 0                   # seconds per player; 0 = infinite
-  density: 40                   # particle intensity (visual only)
+  enabled: true
+  apply-to-all-players: true        # auto-enable for everyone online
+  keep-snow-on-disable: true        # keep thin layers when a player disables the effect
+  radius: 24                        # horizontal radius around the player
+  density: 40                       # particle burst per tick slice (visual only)
+  duration: 0                       # 0 = infinite (seconds per player)
+  no-snow-near-player-radius: 1.5   # safe ring around feet
+  no-snow-near-entity-radius: 1.25  # avoid placing near interactables/Santa
 
-  # Cleanup behavior when a player disables the effect (/snowify):
-  keep-snow-on-disable: true    # if false, thin snow near them is removed
-
-  # Prevent snow right where players click or near interactables (Santa, frames, etc.)
-  no-snow-near-player-radius: 1.5
-  no-snow-near-entity-radius: 1.25
-
-  # Make the world look snowy *ahead* of the player instead of only underfoot
   presnow:
-    bias-front: true            # prefer placing snow in front of the player
-    lookahead-factor: 0.66      # portion of radius to nudge forward (0.0–2.0)
+    bias-front: true
+    lookahead-factor: 0.66          # 0.0..2.0 how much to bias ahead
+
+  # Ground placement rules
+  respect-roof: true                # no ground snow if player under a ceiling
+  blocked-wg-regions:               # particles still show here; only ground snow is blocked
+    - santa_zone
+    # - market
+    # - spawn

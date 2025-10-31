@@ -6,7 +6,7 @@
 
     <groupId>fr.elias</groupId>
     <artifactId>UltimateChristmas</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>3.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>UltimateChristmas</name>

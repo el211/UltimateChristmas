@@ -7,6 +7,8 @@ debug: false
 skin: "brcdev"
 
 spawn:
+  footing_enabled: true
+
   # WorldGuard region where Santa is allowed to hang out / walk.
   # Create this region in the SAME WORLD as the spawn location below.
   #   /rg define santa_zone
@@ -35,6 +37,7 @@ spawn:
         y: 64
         z: -57.745
       displayname: "&c&lSanta Claus"
+
 
 gifts:
   open_in_region:

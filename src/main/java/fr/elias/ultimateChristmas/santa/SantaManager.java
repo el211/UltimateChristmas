@@ -54,6 +54,7 @@ public class SantaManager {
     // Block spawns until this epoch millis (set on startup)
     private long startupBlockUntilMillis = 0L;
 
+    private BukkitTask footingTask;
 
     // Timestamps (seconds)
     private long spawnUnixSeconds = 0L;
@@ -247,6 +248,15 @@ public class SantaManager {
         // stop walking controller
         plugin.setActiveWalkController(null);
 
+        // stop footing task and revert footing blocks
+        if (footingTask != null) {
+            footingTask.cancel();
+            footingTask = null;
+        }
+        try {
+            SantaFooting.revertAll();
+        } catch (Throwable ignored) {}
+
         Entity santa = getSantaEntity();
         if (santa != null && !santa.isDead()) {
             dbg("despawnSantaIfAny(): found Santa entity " + santa.getUniqueId() + " removing...");
@@ -260,6 +270,7 @@ public class SantaManager {
         } else {
             dbg("despawnSantaIfAny(): no living Santa to remove.");
         }
+
         // Clean presents around the last known location (if any)
         try {
             if (santa != null) clearNearbyPresents(santa.getLocation(), 8.0);
@@ -278,6 +289,7 @@ public class SantaManager {
 
         dbg("despawnSantaIfAny(): cleared refs.");
     }
+
 
 
     public boolean isSanta(Entity clicked) {
@@ -395,6 +407,30 @@ public class SantaManager {
                 " lastGiftDropSeconds=" + lastGiftDropSeconds +
                 " region=" + (currentSantaRegion == null ? "null" : currentSantaRegion.getId()));
 
+        // --- ⛸️ Anti-ice footing loop (inserted here) ---
+        // Start/Restart footing task to keep Santa grippy on ice
+        if (footingTask != null) {
+            footingTask.cancel();
+            footingTask = null;
+        }
+        final boolean footingEnabled = plugin.getConfig("santa.yml").getBoolean("spawn.footing_enabled", true);
+        if (footingEnabled) {
+            footingTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+                try {
+                    Entity e = getSantaEntity();
+                    if (!(e instanceof Mob) || e.isDead()) return;
+                    Mob mob = (Mob) e;
+
+                    // Aggressive per-tick footing + velocity damping
+                    SantaFooting.ensureGrip(mob);
+                } catch (Throwable t) {
+                    dbg("Footing task error: " + t.getMessage());
+                }
+            }, 1L, 1L); // every tick to beat ice sliding
+        }
+
+        // --- end footing block ---
+
         // Apply disguise
         applyDisguise(currentSanta, santaSkinName, santaDisplayName);
         // Brief invisibility to hide base mob until disguise is applied
@@ -432,6 +468,7 @@ public class SantaManager {
 
         dbg("spawnSantaFromConfig(): DONE");
     }
+
 
     private SpawnChoice pickSpawnChoice(FileConfiguration cfg) {
         ConfigurationSection regionsSec = cfg.getConfigurationSection("spawn.regions");

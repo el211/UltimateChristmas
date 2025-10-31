@@ -9,6 +9,7 @@ import fr.elias.ultimateChristmas.daily.DailyGiftCommand;
 import fr.elias.ultimateChristmas.daily.DailyGiftListener;
 import fr.elias.ultimateChristmas.daily.DailyGiftManager;
 import fr.elias.ultimateChristmas.daily.DailyProgressStore;
+import fr.elias.ultimateChristmas.debug.DebugCombatListener;
 import fr.elias.ultimateChristmas.economy.ShardManager;
 import fr.elias.ultimateChristmas.economy.ShardShopGUI;
 import fr.elias.ultimateChristmas.economy.ShardShopListener;
@@ -28,6 +29,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
+import fr.elias.ultimateChristmas.santa.SantaFooting;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 
@@ -57,6 +60,7 @@ public class UltimateChristmas extends JavaPlugin {
 
     // cache for capability detection
     private boolean paperPathfinderAvailable;
+    private BukkitTask footingTask;
 
     /* -------------------------------------------------
      * ENABLE / DISABLE
@@ -209,6 +213,8 @@ public class UltimateChristmas extends JavaPlugin {
         if (getCommand("ucgift") != null) {
             getCommand("ucgift").setExecutor(new DailyGiftCommand(this));
         }
+// in onEnable():
+        getServer().getPluginManager().registerEvents(new DebugCombatListener(), this);
 
         /*
          * 9) Start Santa's repeating task

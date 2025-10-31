@@ -1,5 +1,5 @@
 name: UltimateChristmas
-version: '1.0-SNAPSHOT'
+version: '3.0-SNAPSHOT'
 main: fr.elias.ultimateChristmas.UltimateChristmas
 api-version: '1.21'
 depend: [NoteBlockAPI]
