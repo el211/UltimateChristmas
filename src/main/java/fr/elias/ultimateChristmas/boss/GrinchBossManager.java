@@ -128,6 +128,27 @@ public class GrinchBossManager {
             }
         }, 40L, 20L); // start after 2s, then every 1s
     }
+    /** True if the given entity is the currently active Grinch boss. */
+    public boolean isGrinch(org.bukkit.entity.Entity e) {
+        if (e == null) return false;
+
+        // Prefer the live handle if we still have it
+        if (grinch != null && grinch.isValid()) {
+            return e.getUniqueId().equals(grinch.getUniqueId());
+        }
+
+        // Fallback to the cached UUID
+        return grinchUUID != null && e.getUniqueId().equals(grinchUUID);
+    }
+    /** Returns the UUID of the active Grinch, or null if none. */
+    public java.util.UUID getGrinchUUID() {
+        return grinchUUID;
+    }
+
+    /** Returns the Grinch mob if alive, else null. */
+    public org.bukkit.entity.Mob getGrinch() {
+        return (org.bukkit.entity.Mob) getEntity();
+    }
 
     // ----------------- STATE -----------------
 

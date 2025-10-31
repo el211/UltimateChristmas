@@ -1,3 +1,4 @@
+// File: src/main/java/fr/elias/ultimateChristmas/UltimateChristmas.java
 package fr.elias.ultimateChristmas;
 
 import fr.elias.ultimateChristmas.commands.PlayFestiveMusicCommand;
@@ -15,7 +16,12 @@ import fr.elias.ultimateChristmas.economy.ShardShopGUI;
 import fr.elias.ultimateChristmas.economy.ShardShopListener;
 import fr.elias.ultimateChristmas.effects.SnowEffectManager;
 import fr.elias.ultimateChristmas.integration.WorldGuardIntegration;
-import fr.elias.ultimateChristmas.listeners.*;
+import fr.elias.ultimateChristmas.listeners.BlockBreakListener;
+import fr.elias.ultimateChristmas.listeners.CustomDurabilityListener;
+import fr.elias.ultimateChristmas.listeners.EntityKillListener;
+import fr.elias.ultimateChristmas.listeners.PlayerListener;
+import fr.elias.ultimateChristmas.listeners.PresentOpenListener;
+import fr.elias.ultimateChristmas.listeners.SnowballHitListener;
 import fr.elias.ultimateChristmas.music.MusicManager;
 import fr.elias.ultimateChristmas.santa.SantaManager;
 import fr.elias.ultimateChristmas.santa.SantaProtectionListener;
@@ -23,13 +29,13 @@ import fr.elias.ultimateChristmas.santa.SantaWalkController;
 import fr.elias.ultimateChristmas.util.ConfigUtil;
 import fr.elias.ultimateChristmas.util.Debug;
 import fr.elias.ultimateChristmas.util.Msg;
+import fr.elias.ultimateChristmas.santa.SantaFooting;
 import fr.minuskube.inv.InventoryManager;
 import fr.minuskube.inv.SmartInvsPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import fr.elias.ultimateChristmas.santa.SantaFooting;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
@@ -52,7 +58,8 @@ public class UltimateChristmas extends JavaPlugin {
     private MusicManager musicManager;
     private WorldGuardIntegration wgIntegration;
     private SantaManager santaManager;
-    // add near the other managers
+
+    // Grinch boss manager (correct field)
     private fr.elias.ultimateChristmas.boss.GrinchBossManager grinchBossManager;
 
     // active pathfinder walker for Santa (Paper only)
@@ -60,6 +67,8 @@ public class UltimateChristmas extends JavaPlugin {
 
     // cache for capability detection
     private boolean paperPathfinderAvailable;
+
+    // (present but currently unused here; kept if you schedule footsteps elsewhere)
     private BukkitTask footingTask;
 
     /* -------------------------------------------------
@@ -103,10 +112,9 @@ public class UltimateChristmas extends JavaPlugin {
         /*
          * 4) Core managers
          */
-
         // Shard economy
         this.shardManager = new ShardManager(this);
-        // make sure we have latest persistent balances in memory
+        // Load balances into memory
         this.shardManager.reloadConfig();
 
         // Daily gift claim / cooldown logic
@@ -114,18 +122,20 @@ public class UltimateChristmas extends JavaPlugin {
         this.dailyProgressStore = new DailyProgressStore(this);
         this.dailyGiftManager.setProgressStore(this.dailyProgressStore);
 
-        // Music / festive song playback (IMPORTANT: construct before registering /playchristmas)
+        // Music / festive song playback
         this.musicManager = new MusicManager(this);
 
         // Region leash + safety integration for Santa
         this.wgIntegration = new WorldGuardIntegration(this);
+
+        // Snow effect manager + command
         SnowEffectManager snowManager = new SnowEffectManager(this);
-        getCommand("snowify").setExecutor(new SnowCommand(snowManager));;
+        if (getCommand("snowify") != null) {
+            getCommand("snowify").setExecutor(new SnowCommand(snowManager));
+        }
+
         /*
          * 5) SmartInvs / ShardShop GUI setup
-         *
-         * SmartInvs needs ONE global InventoryManager.
-         * We create it here, init it, then pass it to ShardShopGUI.
          */
         this.invManager = new InventoryManager(this);
         this.invManager.init();
@@ -137,9 +147,7 @@ public class UltimateChristmas extends JavaPlugin {
         this.shardShopGUI = new ShardShopGUI(this, this.shardManager, this.invManager);
 
         /*
-         * 6) Santa manager
-         *    Handles spawn/despawn, disguises, walking AI, gift drops,
-         *    and shard rewards.
+         * 6) Santa & Grinch managers
          */
         this.santaManager = new SantaManager(this, this.wgIntegration, this.shardManager);
         this.grinchBossManager = new fr.elias.ultimateChristmas.boss.GrinchBossManager(this);
@@ -171,8 +179,13 @@ public class UltimateChristmas extends JavaPlugin {
 
         // custom “uses left” durability system
         pm.registerEvents(new CustomDurabilityListener(this), this);
+
+        // Grinch combat lifecycle
         pm.registerEvents(new fr.elias.ultimateChristmas.listeners.GrinchDamageListener(this, grinchBossManager), this);
         pm.registerEvents(new fr.elias.ultimateChristmas.listeners.GrinchDeathListener(this, grinchBossManager), this);
+
+        // Debug combat overlay (optional)
+        pm.registerEvents(new DebugCombatListener(), this);
 
         /*
          * 8) Register commands
@@ -182,6 +195,7 @@ public class UltimateChristmas extends JavaPlugin {
                     new ShardsCommand(this, shardManager, shardShopGUI)
             );
         }
+
         if (getCommand("grinchboss") != null) {
             var cmd = new fr.elias.ultimateChristmas.commands.GrinchBossCommand(this, grinchBossManager, wgIntegration);
             getCommand("grinchboss").setExecutor(cmd);
@@ -213,8 +227,6 @@ public class UltimateChristmas extends JavaPlugin {
         if (getCommand("ucgift") != null) {
             getCommand("ucgift").setExecutor(new DailyGiftCommand(this));
         }
-// in onEnable():
-        getServer().getPluginManager().registerEvents(new DebugCombatListener(), this);
 
         /*
          * 9) Start Santa's repeating task
@@ -318,7 +330,23 @@ public class UltimateChristmas extends JavaPlugin {
      * "is this entity THE Santa NPC?"
      */
     public boolean isSantaEntity(org.bukkit.entity.Entity e) {
-        return (santaManager != null && santaManager.isSanta(e));
+        return santaManager != null && santaManager.isSanta(e);
+    }
+
+    /**
+     * Convenience so other plugins/listeners can ask
+     * "is this entity THE Grinch boss?"
+     */
+    public boolean isGrinchEntity(org.bukkit.entity.Entity e) {
+        try {
+            return grinchBossManager != null && grinchBossManager.isGrinch(e);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    public fr.elias.ultimateChristmas.boss.GrinchBossManager getGrinchBossManager() {
+        return grinchBossManager;
     }
 
     /**
