@@ -3,24 +3,28 @@ version: '1.0-SNAPSHOT'
 main: fr.elias.ultimateChristmas.UltimateChristmas
 api-version: '1.21'
 depend: [NoteBlockAPI]
-loadbefore: [LuckPerms, LibsDisguises]
+softdepend: [WorldGuard, LibsDisguises, ProtocolLib]
+loadbefore: [LuckPerms]
 authors: [Elias]
-
 
 commands:
   shards:
     description: Shard balance / shop / admin give
     usage: "/shards [shop|give|set]"
     permission: ultimatechristmas.shards
+
   snowify:
-    description: Toggles a gentle snow effect around you
+    description: Toggle a gentle snow effect around you
+    usage: "/snowify [on|off]"
+    permission: ultimatechristmas.snow.use
+
   playchristmas:
     description: Play a configured .nbs track
     usage: "/playchristmas <trackKey>|stop|list"
     permission: ultimatechristmas.music.play
 
   santaadmin:
-    description: Admin commands for the Santa NPC.
+    description: Admin commands for the Santa NPC
     usage: "/santaadmin <spawn|despawn|reload>"
     permission: ultimatechristmas.admin
 
@@ -35,9 +39,14 @@ commands:
     usage: "/advent [open|claim|remaining|streak|help] [player]"
     permission: ultimatechristmas.advent.use
 
+  grinchboss:
+    description: Manage the Grinch boss (spawn/despawn/setspawn/status)
+    usage: "/grinchboss <spawn|despawn|setspawn|status>"
+    permission: ultimatechristmas.grinch.admin
+
 permissions:
   ultimatechristmas.admin:
-    description: Grants access to all UltimateChristmas admin commands.
+    description: Grants access to all UltimateChristmas admin commands
     default: op
 
   # Shards
@@ -45,7 +54,7 @@ permissions:
     description: Use /shards base command (balance, etc.)
     default: true
   ultimatechristmas.shop.use:
-    description: Open the shard shop GUI.
+    description: Open the shard shop GUI
     default: true
 
   # Music
@@ -53,18 +62,28 @@ permissions:
     description: Allows using /playchristmas
     default: op
 
+  # Snow effect toggle
+  ultimatechristmas.snow.use:
+    description: Allows /snowify
+    default: true
+
   # Snowball / villager rewards
   ultimatechristmas.snowball.reward:
-    description: Allows players to earn rewards for snowball hits.
+    description: Allows players to earn rewards for snowball hits
     default: true
 
   # Daily gift / advent
   ultimatechristmas.gift.give:
-    description: Allows /ucgift give <player>.
+    description: Allows /ucgift give <player>
     default: op
   ultimatechristmas.advent.use:
-    description: Use Advent Calendar commands (/advent).
+    description: Use Advent Calendar commands (/advent)
     default: true
   ultimatechristmas.advent.admin:
-    description: Manage others’ calendar claims / view streaks.
+    description: Manage others’ calendar claims / view streaks
+    default: op
+
+  # Grinch boss
+  ultimatechristmas.grinch.admin:
+    description: Allows /grinchboss admin commands
     default: op

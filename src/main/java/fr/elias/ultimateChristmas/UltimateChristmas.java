@@ -49,6 +49,8 @@ public class UltimateChristmas extends JavaPlugin {
     private MusicManager musicManager;
     private WorldGuardIntegration wgIntegration;
     private SantaManager santaManager;
+    // add near the other managers
+    private fr.elias.ultimateChristmas.boss.GrinchBossManager grinchBossManager;
 
     // active pathfinder walker for Santa (Paper only)
     private SantaWalkController activeWalkController;
@@ -77,6 +79,7 @@ public class UltimateChristmas extends JavaPlugin {
         ConfigUtil.load(this, "music.yml");
         ConfigUtil.load(this, "santa.yml");
         ConfigUtil.load(this, "snowball.yml");
+        ConfigUtil.load(this, "grinchboss.yml");
 
         /*
          * 2) Init debug helper first so Debug.info() works everywhere
@@ -135,6 +138,7 @@ public class UltimateChristmas extends JavaPlugin {
          *    and shard rewards.
          */
         this.santaManager = new SantaManager(this, this.wgIntegration, this.shardManager);
+        this.grinchBossManager = new fr.elias.ultimateChristmas.boss.GrinchBossManager(this);
 
         /*
          * 7) Register listeners
@@ -163,6 +167,8 @@ public class UltimateChristmas extends JavaPlugin {
 
         // custom “uses left” durability system
         pm.registerEvents(new CustomDurabilityListener(this), this);
+        pm.registerEvents(new fr.elias.ultimateChristmas.listeners.GrinchDamageListener(this, grinchBossManager), this);
+        pm.registerEvents(new fr.elias.ultimateChristmas.listeners.GrinchDeathListener(this, grinchBossManager), this);
 
         /*
          * 8) Register commands
@@ -171,6 +177,11 @@ public class UltimateChristmas extends JavaPlugin {
             getCommand("shards").setExecutor(
                     new ShardsCommand(this, shardManager, shardShopGUI)
             );
+        }
+        if (getCommand("grinchboss") != null) {
+            var cmd = new fr.elias.ultimateChristmas.commands.GrinchBossCommand(this, grinchBossManager, wgIntegration);
+            getCommand("grinchboss").setExecutor(cmd);
+            getCommand("grinchboss").setTabCompleter(cmd);
         }
 
         // Advent calendar command (replaces old /daily)

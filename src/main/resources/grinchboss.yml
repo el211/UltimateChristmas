@@ -1,0 +1,71 @@
+enabled: true
+
+display_name: "&2&lThe Grinch"
+skin: "L1lius"    # LibsDisguises skin username
+
+stats:
+  health: 800
+  speed: 0.32
+
+cosmetics:
+  glowing: true
+  green_armor: true
+  thunder: true
+
+# AI pacing
+ai:
+  tick_rate: 20                  # internal loop (ticks)
+  taunt_every_seconds: 25
+  ability_every_seconds: 12
+
+messages:
+  spawn_lines:
+    - "&2The Grinch:&7 Ho ho—no. &cNo Christmas this year!"
+    - "&2The Grinch:&7 I’ll turn your joy into &2silence&7."
+  taunts:
+    - "&2The Grinch:&7 Your cheer makes me sick!"
+    - "&2The Grinch:&7 I’ll stuff your stockings with sorrow!"
+  death_lines:
+    - "&aThe Grinch retreats into the blizzard… for now."
+
+# Weighted abilities (higher = more often)
+abilities:
+  roar_knockback:
+    weight: 20
+  snowstorm_slow:
+    weight: 30
+  shadow_dash:
+    weight: 25
+  summon_minions:
+    weight: 25
+
+# Rewarding after death
+rewarding:
+  top_contributors: 5   # reward top N damage dealers
+
+# Weighted reward buckets; each winner gets one bucket
+rewards:
+  shards_big:
+    chance: 40
+    commands:
+      - "shards give %player% 150"
+    messages:
+      - "&a+150 shards from the Grinch’s stolen stash!"
+  diamonds:
+    chance: 30
+    commands:
+      - "give %player% diamond 6"
+    messages:
+      - "&bSix frosty diamonds glitter in your hand."
+  mythic_key:
+    chance: 20
+    commands:
+      - "crate key give %player% Mythic 1"
+    messages:
+      - "&dYou received a &lMythic Key&d!"
+  rare_title:
+    chance: 10
+    commands:
+      - "lp user %player% parent addtemp grinchslayer 7d"
+    messages:
+      - "&6Title unlocked: &eGrinch Slayer &7(7d)"
