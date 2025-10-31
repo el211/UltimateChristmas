@@ -3,6 +3,7 @@ package fr.elias.ultimateChristmas;
 import fr.elias.ultimateChristmas.commands.PlayFestiveMusicCommand;
 import fr.elias.ultimateChristmas.commands.SantaAdminCommand;
 import fr.elias.ultimateChristmas.commands.ShardsCommand;
+import fr.elias.ultimateChristmas.commands.SnowCommand;
 import fr.elias.ultimateChristmas.daily.AdventCalendarCommand;
 import fr.elias.ultimateChristmas.daily.DailyGiftCommand;
 import fr.elias.ultimateChristmas.daily.DailyGiftListener;
@@ -11,12 +12,9 @@ import fr.elias.ultimateChristmas.daily.DailyProgressStore;
 import fr.elias.ultimateChristmas.economy.ShardManager;
 import fr.elias.ultimateChristmas.economy.ShardShopGUI;
 import fr.elias.ultimateChristmas.economy.ShardShopListener;
+import fr.elias.ultimateChristmas.effects.SnowEffectManager;
 import fr.elias.ultimateChristmas.integration.WorldGuardIntegration;
-import fr.elias.ultimateChristmas.listeners.BlockBreakListener;
-import fr.elias.ultimateChristmas.listeners.CustomDurabilityListener;
-import fr.elias.ultimateChristmas.listeners.EntityKillListener;
-import fr.elias.ultimateChristmas.listeners.PlayerListener;
-import fr.elias.ultimateChristmas.listeners.SnowballHitListener;
+import fr.elias.ultimateChristmas.listeners.*;
 import fr.elias.ultimateChristmas.music.MusicManager;
 import fr.elias.ultimateChristmas.santa.SantaManager;
 import fr.elias.ultimateChristmas.santa.SantaProtectionListener;
@@ -114,7 +112,8 @@ public class UltimateChristmas extends JavaPlugin {
 
         // Region leash + safety integration for Santa
         this.wgIntegration = new WorldGuardIntegration(this);
-
+        SnowEffectManager snowManager = new SnowEffectManager(this);
+        getCommand("snowify").setExecutor(new SnowCommand(snowManager));;
         /*
          * 5) SmartInvs / ShardShop GUI setup
          *
@@ -160,6 +159,7 @@ public class UltimateChristmas extends JavaPlugin {
 
         // protect Santa from damage / block renames / hologram bars etc
         pm.registerEvents(new SantaProtectionListener(this, santaManager), this);
+        pm.registerEvents(new PresentOpenListener(this, santaManager), this);
 
         // custom “uses left” durability system
         pm.registerEvents(new CustomDurabilityListener(this), this);

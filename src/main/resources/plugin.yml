@@ -12,7 +12,8 @@ commands:
     description: Shard balance / shop / admin give
     usage: "/shards [shop|give|set]"
     permission: ultimatechristmas.shards
-
+  snowify:
+    description: Toggles a gentle snow effect around you
   playchristmas:
     description: Play a configured .nbs track
     usage: "/playchristmas <trackKey>|stop|list"

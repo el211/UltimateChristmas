@@ -37,6 +37,15 @@ spawn:
       displayname: "&c&lSanta Claus"
 
 gifts:
+  open_in_region:
+    enabled: true
+    # Accepts one or more WorldGuard region IDs (in the SAME world as the player)
+    allowed_regions:
+      - "christmas_tree"
+      - "winter_square"
+
+    # Optional: message when outside
+    deny_message: "&cYou can only open Santa's presents near the Christmas tree!"
   drop_item:
     material: "PLAYER_HEAD"
     amount: 2
