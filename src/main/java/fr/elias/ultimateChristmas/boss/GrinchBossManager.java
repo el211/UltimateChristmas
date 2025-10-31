@@ -1,5 +1,7 @@
 package fr.elias.ultimateChristmas.boss;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import fr.elias.ultimateChristmas.UltimateChristmas;
@@ -18,16 +20,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.Vector;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import java.io.*;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Vector;
+
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -44,20 +43,25 @@ public class GrinchBossManager {
     // Damage tracking (for fair rewards)
     private final Map<UUID, Double> damageDone = new ConcurrentHashMap<>();
 
-    // Ability scheduler
+    // Ability / autoscheduler
     private BukkitRunnable aiTask;
+
+    // Persistence (auto-spawn)
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    private File storageFile;
-    private GrinchSpawnData stored;         // persisted config
+    private final File storageFile;
+    private GrinchSpawnData stored;   // persisted config
     private BukkitTask autoTask;
     private long lastSpawnEpoch = 0L;
+
     public GrinchBossManager(UltimateChristmas plugin) {
         this.plugin = plugin;
-        this.storageFile = new File(plugin.getDataFolder(), "bosssata.json");
+        this.storageFile = new File(plugin.getDataFolder(), "bosssata.json"); // (spelling kept as requested)
         loadSpawnData();
         startAutoTaskIfConfigured();
     }
-    // ----- persistence helpers -----
+
+    // ----------------- PERSISTENCE -----------------
+
     public void loadSpawnData() {
         try {
             if (!storageFile.exists()) return;
@@ -81,8 +85,8 @@ public class GrinchBossManager {
         }
     }
 
-    /** Called by the command: remember spot + timings and (re)start autoscheduler. */
-    public void setAutoSpawnAt(org.bukkit.Location where, long cooldownMinutes, long stayMinutes) {
+    /** Remember spot + timings and (re)start auto-scheduler. */
+    public void setAutoSpawnAt(Location where, long cooldownMinutes, long stayMinutes) {
         if (where == null || where.getWorld() == null) return;
         long cooldownSec = Math.max(1, cooldownMinutes) * 60L;
         long staySec = Math.max(1, stayMinutes) * 60L;
@@ -96,7 +100,6 @@ public class GrinchBossManager {
         restartAutoTask();
     }
 
-    // ----- auto spawner -----
     private void startAutoTaskIfConfigured() {
         if (stored == null) return;
         restartAutoTask();
@@ -109,18 +112,15 @@ public class GrinchBossManager {
         autoTask = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
             if (isAlive()) return;
 
-            // cooldown check
             long now = System.currentTimeMillis() / 1000L;
             if (lastSpawnEpoch != 0L && now - lastSpawnEpoch < stored.cooldownSeconds) return;
 
-            var w = plugin.getServer().getWorld(stored.world);
+            World w = plugin.getServer().getWorld(stored.world);
             if (w == null) return;
-            var loc = new org.bukkit.Location(w, stored.x, stored.y, stored.z);
+            Location loc = new Location(w, stored.x, stored.y, stored.z);
 
-            // spawn with current leash region null (or choose one yourself)
             if (spawn(loc, null)) {
                 lastSpawnEpoch = now;
-                // timed despawn after staySeconds
                 long ticks = Math.max(1L, stored.staySeconds) * 20L;
                 plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
                     if (isAlive()) despawn();
@@ -128,6 +128,9 @@ public class GrinchBossManager {
             }
         }, 40L, 20L); // start after 2s, then every 1s
     }
+
+    // ----------------- STATE -----------------
+
     public boolean isAlive() {
         return grinch != null && !grinch.isDead() && grinch.isValid();
     }
@@ -152,7 +155,7 @@ public class GrinchBossManager {
         where.getChunk().load(true);
         this.leashRegion = leash;
 
-        // Base mob: Zombie (tankier, can wear armor; we’ll disguise anyway)
+        // Base mob (disguised anyway)
         Mob z = where.getWorld().spawn(where, Zombie.class, mob -> {
             mob.setCustomNameVisible(true);
             mob.setRemoveWhenFarAway(false);
@@ -163,52 +166,28 @@ public class GrinchBossManager {
         var cfg = plugin.getConfig("grinchboss.yml");
         String name = color(cfg.getString("display_name", "&2&lThe Grinch"));
         double health = Math.max(40.0, cfg.getDouble("stats.health", 500.0));
-        double speed = Math.max(0.05, cfg.getDouble("stats.speed", 0.30));
+        double speed  = Math.max(0.05, cfg.getDouble("stats.speed", 0.30));
         boolean glowing = cfg.getBoolean("cosmetics.glowing", true);
 
-        z.setCustomName(name);
         Objects.requireNonNull(z.getAttribute(Attribute.MAX_HEALTH)).setBaseValue(health);
         z.setHealth(health);
         Objects.requireNonNull(z.getAttribute(Attribute.MOVEMENT_SPEED)).setBaseValue(speed);
+        z.setCustomName(name);
         if (glowing) try { z.setGlowing(true); } catch (Throwable ignored) {}
 
         // Bossy resistances
-        z.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, 20 * 6000, 1, true, false, true));
-        z.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, 20 * 6000, 0, true, false, true));
+        z.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE,     20 * 6000, 1, true, false, true));
+        z.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE,20 * 6000, 0, true, false, true));
 
-        // Disguise as player “grinchSkin”
+        // Disguise with player skin (no armor so skin is fully visible)
         String skin = cfg.getString("skin", "GreenDude");
         applyDisguise(z, skin, name);
-
-        // Cosmetic green leather armor (optional)
-        if (cfg.getBoolean("cosmetics.green_armor", true)) {
-            var helm = new ItemStack(Material.LEATHER_HELMET);
-            var chest = new ItemStack(Material.LEATHER_CHESTPLATE);
-            var legs = new ItemStack(Material.LEATHER_LEGGINGS);
-            var boots = new ItemStack(Material.LEATHER_BOOTS);
-            try {
-                Color c = Color.fromRGB(0x0aa20a);
-                ItemMeta im;
-
-                im = helm.getItemMeta(); ((LeatherArmorMeta) im).setColor(c); helm.setItemMeta(im);
-                im = chest.getItemMeta(); ((LeatherArmorMeta) im).setColor(c); chest.setItemMeta(im);
-                im = legs.getItemMeta(); ((LeatherArmorMeta) im).setColor(c); legs.setItemMeta(im);
-                im = boots.getItemMeta(); ((LeatherArmorMeta) im).setColor(c); boots.setItemMeta(im);
-            } catch (Throwable ignored) {}
-            var eq = z.getEquipment();
-            if (eq != null) {
-                eq.setHelmet(helm);
-                eq.setChestplate(chest);
-                eq.setLeggings(legs);
-                eq.setBoots(boots);
-            }
-        }
 
         this.grinch = z;
         this.grinchUUID = z.getUniqueId();
         this.damageDone.clear();
 
-        // Spawn messages + thunder
+        // Spawn lines + cosmetic thunder
         say(cfg.getStringList("messages.spawn_lines"), where);
         if (cfg.getBoolean("cosmetics.thunder", true)) {
             where.getWorld().strikeLightningEffect(where);
@@ -240,9 +219,9 @@ public class GrinchBossManager {
             @Override public void run() {
                 if (!isAlive()) { cancel(); return; }
 
-                // Hard leash to region if set
+                // Keep inside leash region if provided
                 if (leashRegion != null && !insideRegion(grinch.getLocation(), leashRegion)) {
-                    var safe = centerOnGround(grinch.getLocation().getWorld(), leashRegion);
+                    Location safe = centerOnGround(grinch.getLocation().getWorld(), leashRegion);
                     if (safe != null) grinch.teleport(safe);
                 }
 
@@ -265,17 +244,17 @@ public class GrinchBossManager {
     private void castRandomAbility() {
         var cfg = plugin.getConfig("grinchboss.yml");
         WeightedRandomPicker<String> pick = new WeightedRandomPicker<>();
-        pick.add("roar_knockback", cfg.getInt("abilities.roar_knockback.weight", 20));
-        pick.add("snowstorm_slow", cfg.getInt("abilities.snowstorm_slow.weight", 30));
-        pick.add("shadow_dash", cfg.getInt("abilities.shadow_dash.weight", 25));
-        pick.add("summon_minions", cfg.getInt("abilities.summon_minions.weight", 25));
+        pick.add("roar_knockback",  cfg.getInt("abilities.roar_knockback.weight",  20));
+        pick.add("snowstorm_slow",  cfg.getInt("abilities.snowstorm_slow.weight",  30));
+        pick.add("shadow_dash",     cfg.getInt("abilities.shadow_dash.weight",     25));
+        pick.add("summon_minions",  cfg.getInt("abilities.summon_minions.weight",  25));
         String chosen = pick.pick();
         if (chosen == null) return;
 
         switch (chosen) {
             case "roar_knockback" -> abilityRoar();
             case "snowstorm_slow" -> abilitySnowstorm();
-            case "shadow_dash" -> abilityDash();
+            case "shadow_dash"    -> abilityDash();
             case "summon_minions" -> abilitySummon();
         }
     }
@@ -325,7 +304,7 @@ public class GrinchBossManager {
         var world = grinch.getWorld();
         for (int i = 0; i < 3; i++) {
             Location l = grinch.getLocation().clone().add(rng.nextDouble() * 4 - 2, 0, rng.nextDouble() * 4 - 2);
-            Zombie m = world.spawn(l, Zombie.class, z -> {
+            world.spawn(l, Zombie.class, z -> {
                 z.setCustomName(color("&2Grinch Minion"));
                 Objects.requireNonNull(z.getAttribute(Attribute.MAX_HEALTH)).setBaseValue(40.0);
                 z.setHealth(40.0);
@@ -396,7 +375,7 @@ public class GrinchBossManager {
         if (!gc.getBoolean("loot_chest.enabled", true)) return;
 
         where = where.clone();
-        var world = where.getWorld();
+        World world = where.getWorld();
         if (world == null) return;
 
         int y = world.getHighestBlockYAt(where.getBlockX(), where.getBlockZ());
@@ -429,7 +408,7 @@ public class GrinchBossManager {
             for (String key : extras.getKeys(false)) {
                 String mat = gc.getString("loot_chest.extra_items." + key + ".material", "COAL");
                 int amt = Math.max(1, gc.getInt("loot_chest.extra_items." + key + ".amount", 1));
-                var m = Material.matchMaterial(mat);
+                Material m = Material.matchMaterial(mat);
                 if (m != null) chest.getBlockInventory().addItem(new ItemStack(m, amt));
             }
         }
@@ -454,8 +433,7 @@ public class GrinchBossManager {
         int max = Math.max(min, gc.getInt("loot_chest.max_gifts", 6));
         int count = min + rng.nextInt(Math.max(1, (max - min + 1)));
         for (int i = 0; i < count; i++) {
-            where.getWorld().dropItemNaturally(where,
-                    SantaPresentFactory.buildPresent(plugin, 1));
+            where.getWorld().dropItemNaturally(where, SantaPresentFactory.buildPresent(plugin, 1));
         }
     }
 
@@ -527,4 +505,23 @@ public class GrinchBossManager {
     }
 
     private String color(String s) { return s == null ? "" : s.replace('&', '§'); }
+
+    // ----------------- INNER CLASS -----------------
+
+    /** JSON structure for bosssata.json */
+    public static final class GrinchSpawnData {
+        public String world;
+        public double x, y, z;
+        public long cooldownSeconds;
+        public long staySeconds;
+
+        public GrinchSpawnData() {}
+
+        public GrinchSpawnData(String world, double x, double y, double z, long cooldownSeconds, long staySeconds) {
+            this.world = world;
+            this.x = x; this.y = y; this.z = z;
+            this.cooldownSeconds = cooldownSeconds;
+            this.staySeconds = staySeconds;
+        }
+    }
 }

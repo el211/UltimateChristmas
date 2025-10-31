@@ -1,7 +1,8 @@
 enabled: true
 
 display_name: "&2&lThe Grinch"
-skin: "L1lius"    # LibsDisguises skin username
+# Must be a valid Mojang username with a public skin
+skin: "L1lius"
 
 stats:
   health: 800
@@ -9,12 +10,11 @@ stats:
 
 cosmetics:
   glowing: true
-  green_armor: true
   thunder: true
 
 # AI pacing
 ai:
-  tick_rate: 20                  # internal loop (ticks)
+  tick_rate: 20                 # internal loop tick rate
   taunt_every_seconds: 25
   ability_every_seconds: 12
 
@@ -41,7 +41,7 @@ abilities:
 
 # Rewarding after death
 rewarding:
-  top_contributors: 5   # reward top N damage dealers
+  top_contributors: 5            # reward top N damage dealers
 
 # Weighted reward buckets; each winner gets one bucket
 rewards:
@@ -69,3 +69,17 @@ rewards:
       - "lp user %player% parent addtemp grinchslayer 7d"
     messages:
       - "&6Title unlocked: &eGrinch Slayer &7(7d)"
+
+# Chest dropped at the death location (filled with Santa presents + optional extras)
+loot_chest:
+  enabled: true
+  min_gifts: 3
+  max_gifts: 6
+  announce: "&aA loot chest appeared at &f%x%,%y%,%z%&a!"
+  extra_items:
+    coal:
+      material: "COAL"
+      amount: 8
+    gold_nuggets:
+      material: "GOLD_NUGGET"
+      amount: 16
