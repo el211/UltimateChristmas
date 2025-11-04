@@ -10,7 +10,12 @@ import fr.elias.ultimateChristmas.util.WeightedRandomPicker;
 import me.libraryaddict.disguise.DisguiseAPI;
 import me.libraryaddict.disguise.disguisetypes.PlayerDisguise;
 import me.libraryaddict.disguise.disguisetypes.watchers.PlayerWatcher;
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
@@ -26,14 +31,25 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
-import java.io.*;
-import java.util.*;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class GrinchBossManager {
 
     private final UltimateChristmas plugin;
     private final Random rng = new Random();
+    private final Set<UUID> minions = ConcurrentHashMap.newKeySet();
 
     // Active state
     private UUID grinchUUID;
@@ -123,13 +139,15 @@ public class GrinchBossManager {
                 lastSpawnEpoch = now;
                 long ticks = Math.max(1L, stored.staySeconds) * 20L;
                 plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                    if (isAlive()) despawn();
+                    // Force cleanup even if entity became invalid/unloaded
+                    despawn();
                 }, ticks);
             }
         }, 40L, 20L); // start after 2s, then every 1s
     }
+
     /** True if the given entity is the currently active Grinch boss. */
-    public boolean isGrinch(org.bukkit.entity.Entity e) {
+    public boolean isGrinch(Entity e) {
         if (e == null) return false;
 
         // Prefer the live handle if we still have it
@@ -140,14 +158,15 @@ public class GrinchBossManager {
         // Fallback to the cached UUID
         return grinchUUID != null && e.getUniqueId().equals(grinchUUID);
     }
+
     /** Returns the UUID of the active Grinch, or null if none. */
-    public java.util.UUID getGrinchUUID() {
+    public UUID getGrinchUUID() {
         return grinchUUID;
     }
 
     /** Returns the Grinch mob if alive, else null. */
-    public org.bukkit.entity.Mob getGrinch() {
-        return (org.bukkit.entity.Mob) getEntity();
+    public Mob getGrinch() {
+        return (Mob) getEntity();
     }
 
     // ----------------- STATE -----------------
@@ -197,8 +216,8 @@ public class GrinchBossManager {
         if (glowing) try { z.setGlowing(true); } catch (Throwable ignored) {}
 
         // Bossy resistances
-        z.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE,     20 * 6000, 1, true, false, true));
-        z.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE,20 * 6000, 0, true, false, true));
+        z.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE,      20 * 6000, 1, true, false, true));
+        z.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, 20 * 6000, 0, true, false, true));
 
         // Disguise with player skin (no armor so skin is fully visible)
         String skin = cfg.getString("skin", "GreenDude");
@@ -220,16 +239,32 @@ public class GrinchBossManager {
 
     public void despawn() {
         if (aiTask != null) { aiTask.cancel(); aiTask = null; }
+
+        // remove disguise + grinch
         Entity e = getEntity();
         if (e != null) {
             try { DisguiseAPI.undisguiseToAll(e); } catch (Throwable ignored) {}
             e.remove();
         }
+
+        // remove minions
+        for (UUID id : new ArrayList<>(minions)) {
+            Entity m = Bukkit.getEntity(id);
+            if (m != null && m.isValid()) m.remove();
+        }
+        minions.clear();
+
         grinch = null; grinchUUID = null; leashRegion = null;
         damageDone.clear();
     }
 
-    // ----------------- ABILITIES / AI -----------------
+    // ----------------- AI -----------------
+
+    private boolean anyPlayersNearby(double radius) {
+        Entity e = getEntity(); if (e == null) return false;
+        return e.getWorld().getPlayers().stream()
+                .anyMatch(p -> p.getLocation().distanceSquared(e.getLocation()) <= radius * radius);
+    }
 
     private void startAI() {
         var cfg = plugin.getConfig("grinchboss.yml");
@@ -240,21 +275,28 @@ public class GrinchBossManager {
             @Override public void run() {
                 if (!isAlive()) { cancel(); return; }
 
-                // Keep inside leash region if provided
+                // Leash
                 if (leashRegion != null && !insideRegion(grinch.getLocation(), leashRegion)) {
                     Location safe = centerOnGround(grinch.getLocation().getWorld(), leashRegion);
                     if (safe != null) grinch.teleport(safe);
                 }
 
-                // Periodic taunts
+                // If no players nearby, just idle (and prune minions)
+                if (!anyPlayersNearby(18)) {
+                    pruneMinions();
+                    t += tick;
+                    return;
+                }
+
                 if (t % (cfg.getInt("ai.taunt_every_seconds", 20) * 20) == 0) {
                     sayOne(cfg.getStringList("messages.taunts"), grinch.getLocation());
                 }
-
-                // Ability chooser
                 if (t % (cfg.getInt("ai.ability_every_seconds", 10) * 20) == 0) {
                     castRandomAbility();
                 }
+
+                // Periodically cleanup dangling minions
+                if (t % (20 * 10) == 0) pruneMinions();
 
                 t += tick;
             }
@@ -281,6 +323,7 @@ public class GrinchBossManager {
     }
 
     private void abilityRoar() {
+        if (!isAlive()) return;
         Location c = grinch.getLocation();
         c.getWorld().playSound(c, Sound.ENTITY_WARDEN_ROAR, 1f, 0.7f);
         c.getWorld().spawnParticle(Particle.SONIC_BOOM, c, 1, 0, 0, 0, 0);
@@ -293,6 +336,7 @@ public class GrinchBossManager {
     }
 
     private void abilitySnowstorm() {
+        if (!isAlive()) return;
         Location c = grinch.getLocation();
         c.getWorld().playSound(c, Sound.WEATHER_RAIN_ABOVE, 1f, 0.8f);
         for (int i = 0; i < 150; i++) {
@@ -307,29 +351,53 @@ public class GrinchBossManager {
     }
 
     private void abilityDash() {
+        if (!isAlive()) return;
         Player target = nearestPlayer(15);
         if (target == null) return;
+
         Vector dir = target.getLocation().toVector().subtract(grinch.getLocation().toVector()).normalize();
         grinch.setVelocity(dir.multiply(1.2).setY(0.3));
         grinch.getWorld().playSound(grinch.getLocation(), Sound.ENTITY_ENDERMAN_SCREAM, 1f, 0.6f);
-        // small delay then AOE hit
+
+        // small delay then AOE hit (guard against despawn/NPE)
+        final Entity g = getEntity();
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (g == null || !g.isValid()) return;
             for (Player p : getNearbyPlayers(3)) {
-                p.damage(6.0, grinch);
+                p.damage(6.0, g);
                 p.getWorld().spawnParticle(Particle.CRIT, p.getLocation(), 20, .3, .5, .3, .1);
             }
         }, 10L);
     }
 
     private void abilitySummon() {
+        if (!isAlive()) return;
         var world = grinch.getWorld();
-        for (int i = 0; i < 3; i++) {
+        pruneMinions();
+
+        int budget = Math.max(0, maxMinions() - aliveMinionCount());
+        if (budget <= 0) return;
+
+        int toSpawn = Math.min(3, budget); // at most 3 per cast
+
+        for (int i = 0; i < toSpawn; i++) {
             Location l = grinch.getLocation().clone().add(rng.nextDouble() * 4 - 2, 0, rng.nextDouble() * 4 - 2);
             world.spawn(l, Zombie.class, z -> {
                 z.setCustomName(color("&2Grinch Minion"));
                 Objects.requireNonNull(z.getAttribute(Attribute.MAX_HEALTH)).setBaseValue(40.0);
                 z.setHealth(40.0);
                 z.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 20 * 120, 1, true, false, true));
+                z.setRemoveWhenFarAway(true); // allow natural cleanup
+                UUID id = z.getUniqueId();
+                minions.add(id);
+
+                // per-minion lifetime cleanup
+                int lifeSec = minionLifetimeSeconds();
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    Entity e2 = Bukkit.getEntity(id);
+                    if (e2 != null && e2.isValid()) e2.remove();
+                    minions.remove(id);
+                }, lifeSec * 20L);
             });
             world.spawnParticle(Particle.LARGE_SMOKE, l, 20, .3, .4, .3, .05);
             world.playSound(l, Sound.ENTITY_ZOMBIE_AMBIENT, 1f, 0.8f);
@@ -526,6 +594,31 @@ public class GrinchBossManager {
     }
 
     private String color(String s) { return s == null ? "" : s.replace('&', '§'); }
+
+    // ----------------- CONFIG HELPERS & MINION MGMT -----------------
+
+    private int maxMinions() {
+        var cfg = plugin.getConfig("grinchboss.yml");
+        return Math.max(0, cfg.getInt("abilities.summon_minions.max_alive", 12));
+    }
+
+    private int minionLifetimeSeconds() {
+        var cfg = plugin.getConfig("grinchboss.yml");
+        return Math.max(5, cfg.getInt("abilities.summon_minions.minion_lifetime_seconds", 60));
+    }
+
+    // utility: remove dead refs
+    private void pruneMinions() {
+        minions.removeIf(id -> {
+            Entity e = Bukkit.getEntity(id);
+            return (e == null || e.isDead() || !e.isValid());
+        });
+    }
+
+    private int aliveMinionCount() {
+        pruneMinions();
+        return minions.size();
+    }
 
     // ----------------- INNER CLASS -----------------
 

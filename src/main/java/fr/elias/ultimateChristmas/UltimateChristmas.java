@@ -67,6 +67,7 @@ public class UltimateChristmas extends JavaPlugin {
 
     // cache for capability detection
     private boolean paperPathfinderAvailable;
+    private DebugCombatListener debugListener;
 
     // (present but currently unused here; kept if you schedule footsteps elsewhere)
     private BukkitTask footingTask;
@@ -185,7 +186,11 @@ public class UltimateChristmas extends JavaPlugin {
         pm.registerEvents(new fr.elias.ultimateChristmas.listeners.GrinchDeathListener(this, grinchBossManager), this);
 
         // Debug combat overlay (optional)
-        pm.registerEvents(new DebugCombatListener(), this);
+        boolean debug = getConfig().getBoolean("debug", false);
+        if (debug) {
+            debugListener = new DebugCombatListener(this, true);
+            pm.registerEvents(debugListener, this);
+        }
 
         /*
          * 8) Register commands
